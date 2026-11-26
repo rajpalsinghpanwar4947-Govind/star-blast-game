@@ -2,105 +2,145 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Star Blast</title>
+<title>Star Blast 3D Galaxy</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#050816;color:#fff;font-family:Arial;overflow:hidden;touch-action:none}
-#top{display:flex;justify-content:space-between;padding:12px 16px;font-weight:bold;font-size:18px;background:#111133}
-#score{color:#ffe600}
+body{font-family:Arial;overflow:hidden;touch-action:none;color:#fff;
+background:linear-gradient(135deg,#0f0529,#2a0a5e,#ff0066,#00e5ff);
+background-size:400% 400%;animation:bgMove 12s ease infinite}
+@keyframes bgMove{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+#top{display:flex;justify-content:space-between;padding:12px 16px;font-weight:bold;font-size:18px;background:rgba(0,0,0,0.35);backdrop-filter:blur(8px);position:relative;z-index:5;border-bottom:1px solid rgba(255,255,255,0.2)}
+#score{color:#ffe600;text-shadow:0 0 10px gold}
 #time{color:#00e5ff}
-canvas{display:block;width:100%;height:calc(100vh - 52px);background:radial-gradient(circle at 50% 20%, #1a1a4a, #050816)}
-#box{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);z-index:10;text-align:center;padding:20px}
-#box h1{font-size:44px;color:#ffe600}
-#box p{margin:14px 0 20px;color:#ddd;font-size:18px;line-height:1.5}
-button{background:#ffe600;border:0;padding:14px 30px;font-size:20px;font-weight:bold;border-radius:30px}
+#game{width:100%;height:calc(100vh - 52px);position:relative}
+canvas{display:block}
+#box{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,0,30,0.75);backdrop-filter:blur(6px);z-index:10;text-align:center;padding:20px}
+#box h1{font-size:44px;color:#fff;text-shadow:0 0 20px #ff00ff,0 0 40px #00e5ff}
+#box p{margin:14px 0 20px;color:#ddd;font-size:18px;line-height:1.6}
+button{background:linear-gradient(90deg,#ff0066,#7c00ff);color:#fff;border:0;padding:14px 32px;font-size:20px;font-weight:bold;border-radius:30px;box-shadow:0 0 20px #ff0066}
 .hidden{display:none!important}
+#hit{position:fixed;top:60px;left:50%;transform:translateX(-50%);font-size:28px;font-weight:bold;color:#ffe600;text-shadow:0 0 10px #000;z-index:5;pointer-events:none;opacity:0}
+.badge{display:inline-block;background:rgba(255,255,255,0.15);padding:6px 12px;border-radius:20px;margin:3px;font-size:14px}
 </style>
 </head>
 <body>
-<div id="top"><div>⭐ SCORE: <span id="score">0</span></div><div>⏰ <span id="time">30</span>s</div></div>
-<canvas id="c"></canvas>
-<div id="box"><h1>⭐ STAR BLAST</h1><p>Stars ko TAP karo!<br>Tap karte hi blast hoga.<br>30 second hai.</p><button id="btn">▶ PLAY</button></div>
+<div id="top"><div>⭐ SCORE: <span id="score">0</span></div><div>🌌 GALAXY 3D</div><div>⏰ <span id="time">30</span>s</div></div>
+<div id="game"></div>
+<div id="hit">+10</div>
+<div id="box"><h1>⭐ STAR BLAST<br>🌌 GALAXY 3D</h1><p><span class="badge">⭐ Star = +10</span> <span class="badge">🪙 Coin = +20</span> <span class="badge">💣 Bomb = -20</span><br>Galaxy background me 3D stars tap karo!</p><button id="btn">▶ PLAY GALAXY</button></div>
 <script>
-let canvas=document.getElementById('c'), ctx=canvas.getContext('2d');
-let W,H, stars=[], parts=[], score=0, timeLeft=30, playing=false, timer, lastSpawn=0, audioCtx=null;
-function resize(){ W=canvas.width=window.innerWidth; H=canvas.height=window.innerHeight-52; }
-window.addEventListener('resize', resize); resize();
-function pop(){
+let container=document.getElementById('game');
+let scene=new THREE.Scene();
+scene.background=null;
+scene.fog=new THREE.Fog(0x1a0533, 12, 32);
+let camera=new THREE.PerspectiveCamera(60, window.innerWidth/(window.innerHeight-52), 0.1, 100);
+camera.position.set(0,0,12);
+let renderer=new THREE.WebGLRenderer({antialias:true, alpha:true});
+renderer.setClearColor(0x000000,0);
+renderer.setSize(window.innerWidth, window.innerHeight-52);
+container.appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+let light=new THREE.PointLight(0xff00ff, 1.4); light.position.set(5,5,10); scene.add(light);
+let light2=new THREE.PointLight(0x00e5ff, 1.2); light2.position.set(-5,-5,5); scene.add(light2);
+let light3=new THREE.PointLight(0xffe600, 1); light3.position.set(0,8,5); scene.add(light3);
+
+// Galaxy Nebula - bade colorful golas background me
+let nebulaCols=[0xff0066,0x7c00ff,0x00e5ff,0xff9500,0xff00ff];
+for(let i=0;i<12;i++){
+  let g=new THREE.SphereGeometry(2+Math.random()*3, 16,16);
+  let m=new THREE.MeshBasicMaterial({color:nebulaCols[i%5], transparent:true, opacity:0.12});
+  let s=new THREE.Mesh(g,m);
+  s.position.set((Math.random()-0.5)*22, (Math.random()-0.5)*14, -12-Math.random()*6);
+  scene.add(s);
+}
+// Chote twinkling stars background
+for(let i=0;i<300;i++){
+  let g=new THREE.SphereGeometry(0.06,6,6);
+  let m=new THREE.MeshBasicMaterial({color:Math.random()>0.5?0xffffff:0xffe600});
+  let s=new THREE.Mesh(g,m);
+  s.position.set((Math.random()-0.5)*30, (Math.random()-0.5)*20, -10-Math.random()*10);
+  scene.add(s);
+}
+let objects=[], particles=[];
+let score=0, timeLeft=30, playing=false, timer, lastSpawn=0, audioCtx=null;
+function pop(freq){
   try{
     if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
     if(audioCtx.state==='suspended') audioCtx.resume();
     let o=audioCtx.createOscillator(), g=audioCtx.createGain();
     o.connect(g); g.connect(audioCtx.destination);
-    o.frequency.setValueAtTime(700,audioCtx.currentTime);
+    o.frequency.setValueAtTime(freq||700,audioCtx.currentTime);
     o.frequency.exponentialRampToValueAtTime(120,audioCtx.currentTime+0.15);
     g.gain.setValueAtTime(0.25,audioCtx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.2);
     o.start(); o.stop(audioCtx.currentTime+0.2);
   }catch(e){}
 }
-function spawnStar(){
-  stars.push({x:40+Math.random()*(W-80), y:-40, r:28+Math.random()*14, speed:2+Math.random()*2, emoji:['⭐','🌟','💫','✨','🔥'][Math.floor(Math.random()*5)], rot:Math.random()*6});
+function spawn(){
+  let type=Math.random(); let geo, mat, points=10;
+  if(type<0.6){ geo=new THREE.OctahedronGeometry(0.9); mat=new THREE.MeshStandardMaterial({color:0xffe600, emissive:0xffaa00, emissiveIntensity:0.7, metalness:0.8, roughness:0.2}); points=10; }
+  else if(type<0.85){ geo=new THREE.TorusGeometry(0.7,0.3,12,24); mat=new THREE.MeshStandardMaterial({color:0x00e5ff, emissive:0x00aaff, emissiveIntensity:0.9, metalness:0.9, roughness:0.1}); points=20; }
+  else { geo=new THREE.SphereGeometry(0.8,16,16); mat=new THREE.MeshStandardMaterial({color:0x222222, emissive:0xff0000, emissiveIntensity:0.8, metalness:0.5, roughness:0.4}); points=-20; }
+  let mesh=new THREE.Mesh(geo, mat);
+  mesh.position.set((Math.random()-0.5)*10, 8, 0);
+  mesh.userData={speed:0.05+Math.random()*0.04, points:points};
+  scene.add(mesh); objects.push(mesh);
 }
-function blast(x,y){
-  let cols=['#ffe600','#ff0066','#00e5ff','#7CFF00','#ff9500'];
-  for(let i=0;i<18;i++){
-    let a=Math.random()*Math.PI*2, s=2+Math.random()*5;
-    parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:30,col:cols[i%5]});
+function blast(pos, color){
+  for(let i=0;i<22;i++){
+    let g=new THREE.SphereGeometry(0.13,6,6);
+    let m=new THREE.MeshBasicMaterial({color:color||0xffe600});
+    let p=new THREE.Mesh(g,m); p.position.copy(pos);
+    p.userData={vx:(Math.random()-0.5)*0.3, vy:(Math.random()-0.5)*0.3, vz:(Math.random()-0.5)*0.3, life:32};
+    scene.add(p); particles.push(p);
   }
 }
-function draw(){
-  ctx.clearRect(0,0,W,H);
-  if(playing && Date.now()-lastSpawn>450){ spawnStar(); lastSpawn=Date.now(); }
-  for(let i=stars.length-1;i>=0;i--){
-    let s=stars[i]; s.y+=s.speed; s.rot+=0.02;
-    ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.rot);
-    ctx.font=s.r*1.6+'px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.shadowColor='gold'; ctx.shadowBlur=18; ctx.fillText(s.emoji,0,0); ctx.restore();
-    if(s.y>H+60) stars.splice(i,1);
-  }
-  for(let i=parts.length-1;i>=0;i--){
-    let p=parts[i]; p.x+=p.vx; p.y+=p.vy; p.life--;
-    ctx.globalAlpha=p.life/30; ctx.fillStyle=p.col;
-    ctx.beginPath(); ctx.arc(p.x,p.y,6,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
-    if(p.life<=0) parts.splice(i,1);
-  }
-  requestAnimationFrame(draw);
+function showHit(txt){
+  let el=document.getElementById('hit'); el.textContent=txt;
+  el.style.opacity=1; el.style.transition='none'; el.style.transform='translateX(-50%) translateY(0)';
+  setTimeout(()=>{ el.style.transition='all 0.6s'; el.style.opacity=0; el.style.transform='translateX(-50%) translateY(-20px)'; },100);
 }
-draw();
+function animate(){
+  requestAnimationFrame(animate);
+  if(playing && Date.now()-lastSpawn>500){ spawn(); lastSpawn=Date.now(); }
+  for(let i=objects.length-1;i>=0;i--){ let o=objects[i]; o.position.y-=o.userData.speed; o.rotation.x+=0.03; o.rotation.y+=0.04; if(o.position.y<-7){ scene.remove(o); objects.splice(i,1); } }
+  for(let i=particles.length-1;i>=0;i--){ let p=particles[i]; p.position.x+=p.userData.vx; p.position.y+=p.userData.vy; p.position.z+=p.userData.vz; p.userData.life--; if(p.userData.life<=0){ scene.remove(p); particles.splice(i,1); } }
+  renderer.render(scene,camera);
+}
+animate();
+let ray=new THREE.Raycaster(), mouse=new THREE.Vector2();
 function handleTap(e){
-  if(!playing) return;
-  e.preventDefault();
-  let rect=canvas.getBoundingClientRect();
-  let tx=(e.touches?e.touches[0].clientX:e.clientX)-rect.left;
-  let ty=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
-  for(let i=stars.length-1;i>=0;i--){
-    let s=stars[i], dx=tx-s.x, dy=ty-s.y;
-    if(Math.sqrt(dx*dx+dy*dy) < s.r+22){
-      blast(s.x,s.y); pop(); stars.splice(i,1);
-      score+=10; document.getElementById('score').textContent=score;
-      return;
-    }
+  if(!playing) return; e.preventDefault();
+  let rect=renderer.domElement.getBoundingClientRect();
+  let cx=(e.touches?e.touches[0].clientX:e.clientX)-rect.left;
+  let cy=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
+  mouse.x=(cx/rect.width)*2-1; mouse.y=-(cy/rect.height)*2+1;
+  ray.setFromCamera(mouse, camera);
+  let hits=ray.intersectObjects(objects);
+  if(hits.length>0){
+    let obj=hits[0].object; let pts=obj.userData.points;
+    blast(obj.position, pts<0?0xff0000:0xffe600); pop(pts<0?200:700);
+    score+=pts; if(score<0) score=0;
+    document.getElementById('score').textContent=score;
+    showHit(pts>0?'+'+pts:pts);
+    scene.remove(obj); objects.splice(objects.indexOf(obj),1);
   }
 }
-canvas.addEventListener('pointerdown', handleTap);
-canvas.addEventListener('touchstart', handleTap, {passive:false});
+renderer.domElement.addEventListener('pointerdown', handleTap);
+renderer.domElement.addEventListener('touchstart', handleTap, {passive:false});
 document.getElementById('btn').addEventListener('click', ()=>{
-  score=0; timeLeft=30; playing=true; stars=[]; parts=[];
+  score=0; timeLeft=30; playing=true;
   document.getElementById('score').textContent=0;
   document.getElementById('time').textContent=30;
   document.getElementById('box').classList.add('hidden');
   clearInterval(timer);
   timer=setInterval(()=>{
     timeLeft--; document.getElementById('time').textContent=timeLeft;
-    if(timeLeft<=0){
-      playing=false; clearInterval(timer);
-      let box=document.getElementById('box');
-      box.classList.remove('hidden');
-      box.innerHTML='<h1>GAME OVER</h1><p>Score: '+score+'</p><button onclick="location.reload()">🔁 AGAIN</button>';
-    }
+    if(timeLeft<=0){ playing=false; clearInterval(timer); let box=document.getElementById('box'); box.classList.remove('hidden'); box.innerHTML='<h1>GALAXY OVER</h1><p>Score: '+score+'</p><button onclick="location.reload()">🔁 AGAIN</button>'; }
   },1000);
 });
+window.addEventListener('resize', ()=>{ camera.aspect=window.innerWidth/(window.innerHeight-52); camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight-52); });
 </script>
 </body>
 </html>
