@@ -1,41 +1,36 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mini GTA - Indore City</title>
-<style>body{margin:0;background:#111;color:#fff;font-family:sans-serif;text-align:center}canvas{background:#2d6a2e;display:block;margin:auto;border:3px solid #fff}#hud{padding:8px}button{padding:10px 18px;font-size:18px;border-radius:10px;border:0;background:#ffcc00;font-weight:bold}</style></head>
-<body>
-<div id="hud">🚔 MINI GTA - INDORE CITY | 💰 Paise: <span id="money">0</span> | ⭐ Wanted: <span id="wanted">0</span> | 🎯 Mission: <span id="mission">Rajwada se Sarafa jao</span></div>
-<canvas id="g" width="360" height="560"></canvas>
-<div style="padding:10px"><button ontouchstart="k('w',1)" ontouchend="k('w',0)">⬆️</button><br>
-<button ontouchstart="k('a',1)" ontouchend="k('a',0)">⬅️</button>
-<button ontouchstart="k('s',1)" ontouchend="k('s',0)">⬇️</button>
-<button ontouchstart="k('d',1)" ontouchend="k('d',0)">➡️</button>
-<button onclick="horn()">📯 Horn</button></div>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Mini GTA Indore 3D</title>
+<style>body{margin:0;overflow:hidden;background:#000;font-family:Arial} #hud{position:fixed;top:10px;left:10px;color:#fff;background:rgba(0,0,0,0.6);padding:10px;border-radius:10px;z-index:10;font-weight:bold} #joy{position:fixed;bottom:30px;left:30px;width:110px;height:110px;background:rgba(255,255,255,0.2);border-radius:50%;z-index:10} #knob{position:absolute;width:50px;height:50px;background:#ffcc00;border-radius:50%;left:30px;top:30px} #gas{position:fixed;bottom:40px;right:20px;width:80px;height:80px;background:#00c853;border-radius:50%;color:#fff;font-weight:bold;font-size:16px;border:0;z-index:10} #brake{position:fixed;bottom:140px;right:20px;width:60px;height:60px;background:#ff3d00;border-radius:50%;color:#fff;border:0;z-index:10}</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head><body>
+<div id="hud">🏙️ INDORE 3D | 💰 <span id="money">0</span> | ⭐ <span id="wanted">0</span><br>🎯 Sarafa ke coin lo, Police se bacho</div>
+<div id="joy"><div id="knob"></div></div>
+<button id="gas">GAS ⛽</button><button id="brake">BRAKE</button>
 <script>
-let c=document.getElementById('g'),x=c.getContext('2d');
-let p={x:180,y:450,a:-Math.PI/2,s:0},keys={},money=0,wanted=0,mission=0;
-let police={x:80,y:80},coins=[{x:180,y:200},{x:100,y:300},{x:260,y:120}];
-function k(key,v){keys[key]=v}
-document.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=1);
-document.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
-function horn(){let a=new AudioContext(),o=a.createOscillator();o.connect(a.destination);o.start();setTimeout(()=>o.stop(),200)}
-function loop(){
- if(keys['w']) p.s=Math.min(p.s+0.15,4); if(keys['s']) p.s=Math.max(p.s-0.15,-2);
- if(keys['a']) p.a-=0.06; if(keys['d']) p.a+=0.06; p.s*=0.98;
- p.x+=Math.cos(p.a)*p.s; p.y+=Math.sin(p.a)*p.s;
- if(p.x<20)p.x=20; if(p.x>340)p.x=340; if(p.y<20)p.y=20; if(p.y>540)p.y=540;
- // police chase
- let dx=p.x-police.x, dy=p.y-police.y, d=Math.hypot(dx,dy);
- if(wanted>0){police.x+=dx/d*1.2; police.y+=dy/d*1.2; if(d<25){money=Math.max(0,money-20); wanted=0; alert('Police ne pakad liya! 20 Rs fine'); police.x=80; police.y=80;}}
- x.fillStyle='#2d6a2e'; x.fillRect(0,0,360,560);
- x.fillStyle='#444'; x.fillRect(0,0,360,40); x.fillRect(0,0,40,560); x.fillRect(320,0,40,560); x.fillRect(0,520,360,40); x.fillRect(150,0,60,560); x.fillRect(0,250,360,40);
- x.fillStyle='#fff'; x.font='bold 13px sans-serif'; x.fillText('RAJWADA',10,25); x.fillText('SARAFA',240,25); x.fillText('VIJAY NAGAR',10,545);
- // coins
- coins.forEach((co,i)=>{ if(Math.hypot(p.x-co.x,p.y-co.y)<25){coins.splice(i,1); money+=50; wanted=1; document.getElementById('money').innerText=money; document.getElementById('wanted').innerText=wanted; if(money>=150){document.getElementById('mission').innerText='Mission Complete! Jeet gaye!'; alert('Mission Complete! Tum Indore ke Don ban gaye!');}} x.fillStyle='gold'; x.beginPath(); x.arc(co.x,co.y,10,0,7); x.fill(); });
- // player scorpio
- x.save(); x.translate(p.x,p.y); x.rotate(p.a); x.fillStyle='#111'; x.fillRect(-22,-10,44,20); x.fillStyle='#00aaff'; x.fillRect(-5,-8,15,16); x.fillStyle='#fff'; x.font='bold 10px sans-serif'; x.fillText('SCORPIO',-20,3); x.restore();
- // police
- x.fillStyle='white'; x.fillRect(police.x-15,police.y-8,30,16); x.fillStyle='red'; x.fillRect(police.x-15,police.y-8,15,16); x.fillStyle='blue'; x.fillRect(police.x,police.y-8,15,16);
- requestAnimationFrame(loop);
-}
-loop();
-</script></body></html>
+let scene=new THREE.Scene(); scene.background=new THREE.Color(0x87CEEB);
+let cam=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,500);
+let ren=new THREE.WebGLRenderer({antialias:true}); ren.setSize(innerWidth,innerHeight); document.body.appendChild(ren.domElement);
+let light=new THREE.DirectionalLight(0xffffff,1); light.position.set(50,100,50); scene.add(light); scene.add(new THREE.AmbientLight(0xffffff,0.5));
+// ground
+let ground=new THREE.Mesh(new THREE.PlaneGeometry(300,300), new THREE.MeshLambertMaterial({color:0x2d6a2e})); ground.rotation.x=-Math.PI/2; scene.add(ground);
+// roads
+function road(w,d,x,z){let m=new THREE.Mesh(new THREE.BoxGeometry(w,0.5,d), new THREE.MeshLambertMaterial({color:0x333333})); m.position.set(x,0.25,z); scene.add(m);}
+road(300,12,0,0); road(12,300,0,0); road(300,12,0,60); road(300,12,0,-60);
+// buildings
+let cols=[0xff6b6b,0x4ecdc4,0xffe66d,0xa78bfa,0xff9f43];
+for(let i=0;i<20;i++){let h=10+Math.random()*20;let b=new THREE.Mesh(new THREE.BoxGeometry(12,h,12), new THREE.MeshLambertMaterial({color:cols[i%5]})); b.position.set(-130+Math.random()*260, h/2, -130+Math.random()*260); if(Math.abs(b.position.x)<15||Math.abs(b.position.z)<15) continue; scene.add(b);}
+// Scorpio - 3D box car
+let car=new THREE.Group();
+let body=new THREE.Mesh(new THREE.BoxGeometry(4,1.5,8), new THREE.MeshLambertMaterial({color:0x111111})); body.position.y=1; car.add(body);
+let cabin=new THREE.Mesh(new THREE.BoxGeometry(3.5,1.2,4), new THREE.MeshLambertMaterial({color:0x00aaff})); cabin.position.set(0,2.2,-0.5); car.add(cabin);
+let wheelGeo=new THREE.CylinderGeometry(0.8,0.8,0.5,12); let wheelMat=new THREE.MeshLambertMaterial({color:0x000000});
+[[-1.8,0.8,2.5],[1.8,0.8,2.5],[-1.8,0.8,-2.5],[1.8,0.8,-2.5]].forEach(p=>{let w=new THREE.Mesh(wheelGeo,wheelMat); w.rotation.z=Math.PI/2; w.position.set(p[0],p[1],p[2]); car.add(w);});
+scene.add(car); car.position.set(0,0,20);
+// police
+let police=new THREE.Group(); let pbody=new THREE.Mesh(new THREE.BoxGeometry(4,1.5,8), new THREE.MeshLambertMaterial({color:0xffffff})); pbody.position.y=1; police.add(pbody); scene.add(police); police.position.set(-30,0,-30);
+// coins
+let coins=[]; for(let i=0;i<5;i++){let co=new THREE.Mesh(new THREE.CylinderGeometry(1,1,0.3,16), new THREE.MeshLambertMaterial({color:0xffcc00})); co.position.set(-40+i*20,1, -20); scene.add(co); coins.push(co);}
+let speed=0, angle=0, joyX=0, gas=false, money=0, wanted=0;
+// joystick
+let joy=document.getElementBy
