@@ -1,61 +1,96 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Star Blast - Bubble Shooter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Star Blast</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:#0f0f2a;color:#fff;font-family:system-ui,sans-serif;overflow:hidden}
-#top{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#1a1a3a}
-#top b{color:#FFD700}
-#timer{color:#FF6B6B;font-weight:700}
-button{border:0;border-radius:20px;padding:10px 18px;font-weight:700;cursor:pointer}
-#playBtn{background:#FFD700;color:#000;font-size:16px}
-#gameWrap{position:relative;width:100vw;height:calc(100vh - 110px);background:radial-gradient(circle at 50% 20%, #2a2a5a, #0f0f2a);overflow:hidden}
-canvas{width:100%;height:100%;display:block;touch-action:none}
-#bottom{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#1a1a3a}
-#msg{text-align:center;padding:8px;font-size:14px;color:#FFD700;min-height:22px}
-.pill{background:#2a2a5a;padding:6px 12px;border-radius:20px;font-size:13px}
+body{background:#050816;color:white;font-family:Arial;overflow:hidden;height:100vh;touch-action:none}
+#top{display:flex;justify-content:space-between;padding:12px 16px;font-weight:bold;font-size:18px;background:rgba(255,255,255,0.08)}
+#score{color:#ffe600}
+#time{color:#00e5ff}
+#game{position:relative;width:100%;height:calc(100vh - 52px);overflow:hidden;background:radial-gradient(circle at 50% 20%, #1a1a4a, #050816)}
+.star{position:absolute;font-size:44px;cursor:pointer;filter:drop-shadow(0 0 12px gold);animation:fall linear forwards;user-select:none}
+@keyframes fall{from{transform:translateY(-60px) rotate(0deg)}to{transform:translateY(110vh) rotate(360deg)}}
+.particle{position:absolute;width:10px;height:10px;border-radius:50%;pointer-events:none}
+#over{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);z-index:10;text-align:center;padding:20px}
+#over h1{font-size:42px;color:#ffe600;margin-bottom:10px}
+#over p{font-size:20px;margin-bottom:20px}
+button{background:#ffe600;border:0;padding:14px 28px;font-size:20px;font-weight:bold;border-radius:30px}
+#start{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);z-index:10;text-align:center;padding:20px}
+#start h1{font-size:48px;color:#ffe600;text-shadow:0 0 20px gold}
+#start p{margin:14px 0 22px;color:#ccc}
 </style>
 </head>
 <body>
-<div id="top">
-<div>⭐ <b id="stars">100</b></div>
-<div>⏱ <span id="timer">01:00</span></div>
-<div>Level <b id="level">1</b> / 100</div>
-</div>
-<div id="msg">Daily Bonus +50 Star mile! 20 Star Entry - Jeeto to 50 Star pao!</div>
-<div id="gameWrap"><canvas id="cv"></canvas></div>
-<div id="bottom">
-<span class="pill">🎯 3 same = POP</span>
-<button id="playBtn">▶ KHELO - 20 ⭐</button>
+<div id="top"><div>⭐ SCORE: <span id="score">0</span></div><div>⏰ <span id="time">30</span>s</div></div>
+<div id="game">
+<div id="start"><h1>⭐ STAR BLAST</h1><p>Stars ko tap karo, blast karo!<br>Miss mat karo, 30 second hai.</p><button onclick="startGame()">▶ PLAY</button></div>
+<div id="over"><h1>GAME OVER</h1><p>Score: <span id="final">0</span></p><button onclick="startGame()">🔁 AGAIN</button></div>
 </div>
 <script>
-const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
-let W,H, stars=150, level=1, playing=false, timeLeft=60, timerId=null;
-let bubbles=[], shooter={x:0,y:0,angle:-Math.PI/2}, current=null;
-const COLORS=['#FF4757','#FFA502','#2ED573','#1E90FF','#ECCC68','#FF6B81'];
-let audioCtx=null;
-function getTimeForLevel(lv){ if(lv<=10) return 60; if(lv<=50) return 45; return 30; }
-function resize(){ W=cv.width=cv.clientWidth; H=cv.clientHeight; shooter.x=W/2; shooter.y=H-30; }
-window.addEventListener('resize', resize); resize();
-function popSound(){ try{ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); const o=audioCtx.createOscillator(), g=audioCtx.createGain(); o.type='sine'; o.frequency.setValueAtTime(600, audioCtx.currentTime); o.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime+0.08); g.gain.setValueAtTime(0.15, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.12); o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+0.12); }catch(e){} }
-function randColor(){ return COLORS[Math.floor(Math.random()*COLORS.length)]; }
-function newBubble(){ return {color:randColor(), x:shooter.x, y:shooter.y, vx:0, vy:0, moving:false, r:18}; }
-function setup(){
-  bubbles=[]; let rows = level<=10?4 : level<=50?5 : 6;
-  for(let row=0; row<rows; row++){ for(let col=0; col<8; col++){ bubbles.push({x:22+col*38, y:22+row*34, r:16, color:randColor(), moving:false}); } }
-  current=newBubble();
+let score=0, timeLeft=30, playing=false, timer, spawner;
+let game=document.getElementById('game');
+function playPop(){
+  try{
+    let a=new (window.AudioContext||window.webkitAudioContext)();
+    let o=a.createOscillator(), g=a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.frequency.setValueAtTime(600,a.currentTime);
+    o.frequency.exponentialRampToValueAtTime(100,a.currentTime+0.15);
+    g.gain.setValueAtTime(0.3,a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01,a.currentTime+0.2);
+    o.start(); o.stop(a.currentTime+0.2);
+  }catch(e){}
 }
-function draw(){ ctx.clearRect(0,0,W,H); bubbles.forEach(b=>{ ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fillStyle=b.color; ctx.fill(); ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.arc(b.x-5,b.y-6,5,0,Math.PI*2); ctx.fill(); }); if(current && playing){ ctx.beginPath(); ctx.arc(current.x,current.y,current.r,0,Math.PI*2); ctx.fillStyle=current.color; ctx.fill(); } if(playing){ ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.setLineDash([6,6]); ctx.beginPath(); ctx.moveTo(shooter.x,shooter.y); ctx.lineTo(shooter.x+Math.cos(shooter.angle)*80, shooter.y+Math.sin(shooter.angle)*80); ctx.stroke(); ctx.setLineDash([]); } requestAnimationFrame(draw); }
-function checkPop(hit){ let same=bubbles.filter(b=>b.color===hit.color && Math.hypot(b.x-hit.x,b.y-hit.y)<50); if(same.length>=2){ same.forEach(b=>{ bubbles=bubbles.filter(x=>x!==b); }); bubbles=bubbles.filter(x=>x!==hit); stars+=10; popSound(); document.getElementById('stars').textContent=stars; document.getElementById('msg').textContent='POP! +10 Star mile!'; if(bubbles.length<10){ winLevel(); } } }
-function winLevel(){ playing=false; clearInterval(timerId); let bonus = level>=51?100:50; stars+=bonus; level++; if(level>100) level=100; document.getElementById('stars').textContent=stars; document.getElementById('level').textContent=level; document.getElementById('msg').textContent='Level Jeet Gaye! +'+bonus+' Star Bonus!'; document.getElementById('playBtn').textContent='▶ AGALA LEVEL - 20 ⭐'; }
-function shoot(){ if(!playing || !current) return; current.moving=true; let speed=8; let iv=setInterval(()=>{ current.x+=Math.cos(shooter.angle)*speed; current.y+=Math.sin(shooter.angle)*speed; if(current.x<18||current.x>W-18) shooter.angle=Math.PI-shooter.angle; let hit=bubbles.find(b=>Math.hypot(b.x-current.x,b.y-current.y)<32); if(hit || current.y<30){ bubbles.push({...current, moving:false}); if(hit) checkPop(hit); current=newBubble(); clearInterval(iv); } if(current.y<-20) clearInterval(iv); },16); }
-cv.addEventListener('pointermove', e=>{ let r=cv.getBoundingClientRect(); let dx=(e.clientX-r.left)-shooter.x, dy=(e.clientY-r.top)-shooter.y; shooter.angle=Math.atan2(dy,dx); if(shooter.angle>-0.2) shooter.angle=-0.2; if(shooter.angle<-Math.PI+0.2) shooter.angle=-Math.PI+0.2; });
-cv.addEventListener('click', shoot);
-document.getElementById('playBtn').onclick=()=>{ if(stars<20){ document.getElementById('msg').textContent='Star khatam! Ad dekho ya 10 Rs me 100 Star lo.'; return; } stars-=20; timeLeft=getTimeForLevel(level); playing=true; setup(); document.getElementById('stars').textContent=stars; document.getElementById('msg').textContent='Level '+level+' - Khelo! Time: '+timeLeft+' sec'; clearInterval(timerId); let m='0'+Math.floor(timeLeft/60), s=timeLeft%60<10?'0'+(timeLeft%60):timeLeft%60; document.getElementById('timer').textContent=m+':'+s; timerId=setInterval(()=>{ timeLeft--; let mm='0'+Math.floor(timeLeft/60), ss=timeLeft%60<10?'0'+(timeLeft%60):timeLeft%60; document.getElementById('timer').textContent=mm+':'+ss; if(timeLeft<=10) document.getElementById('timer').style.color='#FF0000'; else document.getElementById('timer').style.color='#FF6B6B'; if(timeLeft<=0){ playing=false; clearInterval(timerId); document.getElementById('msg').textContent='Time Khatam! Phir se khelo?'; } },1000); };
-setup(); draw();
+function blast(x,y){
+  let colors=['#ffe600','#ff0066','#00e5ff','#7CFF00','#ff9500'];
+  for(let i=0;i<14;i++){
+    let p=document.createElement('div'); p.className='particle';
+    p.style.left=x+'px'; p.style.top=y+'px';
+    p.style.background=colors[i%5];
+    game.appendChild(p);
+    let ang=Math.random()*Math.PI*2, dist=40+Math.random()*70;
+    p.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(ang)*dist}px,${Math.sin(ang)*dist}px) scale(0)`,opacity:0}],{duration:500,easing:'ease-out'}).onfinish=()=>p.remove();
+  }
+}
+function spawn(){
+  if(!playing) return;
+  let s=document.createElement('div'); s.className='star';
+  let emojis=['⭐','🌟','💫','✨','🔥'];
+  s.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+  s.style.left=Math.random()*85+'%';
+  let dur=2+Math.random()*1.5;
+  s.style.animationDuration=dur+'s';
+  s.style.fontSize=(36+Math.random()*22)+'px';
+  s.onclick=(e)=>{
+    e.stopPropagation();
+    let r=s.getBoundingClientRect(), g2=game.getBoundingClientRect();
+    blast(r.left-g2.left+20, r.top-g2.top+20);
+    playPop(); score+=10;
+    document.getElementById('score').textContent=score;
+    s.remove();
+  };
+  game.appendChild(s);
+  setTimeout(()=>s.remove(), dur*1000);
+}
+function startGame(){
+  score=0; timeLeft=30; playing=true;
+  document.getElementById('score').textContent=0;
+  document.getElementById('time').textContent=30;
+  document.getElementById('start').style.display='none';
+  document.getElementById('over').style.display='none';
+  clearInterval(timer); clearInterval(spawner);
+  spawner=setInterval(spawn, 450);
+  timer=setInterval(()=>{
+    timeLeft--; document.getElementById('time').textContent=timeLeft;
+    if(timeLeft<=0){
+      playing=false; clearInterval(timer); clearInterval(spawner);
+      document.getElementById('final').textContent=score;
+      document.getElementById('over').style.display='flex';
+    }
+  },1000);
+}
 </script>
 </body>
 </html>
